@@ -76,6 +76,42 @@ for(r.k in 1:8){
   if(r.k==8) dtr.r = rb
 }
 
+#Garcia- dimensions of climate change
+#DOI: 10.1126/science.1247579
+#change in probability of local climate extremes
+#future data 2069-2099
+#exceed 95th percentile
+
+#Change in TX90p, Percentage of days when TX > 90th percentile 
+tx90.br <- brick("tx90pETCCDI_yr_NCEPREANALYSIS_historical_r1i1p1_1948-2011.nc")
+
+##mean for 1st two layers
+#m <- mean(b[[1:2]])
+
+rb= rotate(tx90.br) 
+# rasterize output, give cells value of NAME(seas are NA)
+#crop
+worldcropr = rasterize(worldcrop, rb, field='NAME', fun='first')
+# mask random grid by worldcropr
+rb = mask(x=rb, mask=worldcropr)
+#mean
+tx90.init= mean(rb[[1:49]])
+tx90.rec= mean(rb[[50:64]])
+#change in percent
+tx90.dif= (tx90.rec-tx90.init)/tx90.init
+
+#probability of record breaking extremes
+#https://www.nature.com/articles/s41558-021-01092-9
+#https://data.iac.ethz.ch/Fischer_et_al_2021_RecordExtremes/figures/
+
+setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/data/climate/")
+ext <- raster("fig3b.nc")
+
+#project to lat lon
+ext.ll <-projectRaster(from = ext, to= wsdi.r)
+# mask random grid by worldcropr
+ext.r = mask(x=ext.ll, mask=worldcropr)
+
 #---------------
 #BIODIVERSITY
 #IUCN: https://www.iucnredlist.org/resources/other-spatial-downloads
@@ -90,6 +126,17 @@ div.ll <-projectRaster(from = div, to= wsdi.r)
 div.r = mask(x=div.ll, mask=worldcropr)
 
 #diversity R package: https://github.com/RS-eco/rasterSp
+
+#BII
+#https://data.nhm.ac.uk/dataset/global-map-of-the-biodiversity-intactness-index-from-newbold-et-al-2016-science
+setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/data/biodiversity/BII/")
+bii <- raster("lbii.asc")
+
+#project to lat lon
+bii.ll <-projectRaster(from = bii, to= wsdi.r)
+# mask random grid by worldcropr
+bii.r = mask(x=bii.ll, mask=worldcropr)
+
 #------------------
 #DISEASE
 
@@ -100,8 +147,13 @@ div.r = mask(x=div.ll, mask=worldcropr)
 #host parasite networks
 #https://doi.org/10.1111/1365-2656.13666
 
+setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/data/disease/HostParasite_raster/")
+hpar= readRDS("combinedModel_raster.rds")
+#also "affinityModel_raster.rds","observed_links_raster.rds","phylogenyModel_raster.rds"
 
-
+#raster
+plot(hpar)
+  
 #------------------
 
 #compare patterns
