@@ -4,6 +4,9 @@ library(reshape2)
 library(raster)
 library(ggplot2)
 
+library(maptools)
+data(wrld_simpl)
+
 #CLIMATE EXTREME DATA
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/Extremes/ExtremesSynched/Data/ClimateData/r1i1p1-2014-11-26/r1i1p1/")
 
@@ -83,11 +86,6 @@ for(r.k in 1:8){
 #exceed 95th percentile
 
 #Change in TX90p, Percentage of days when TX > 90th percentile 
-tx90.br <- brick("tx90pETCCDI_yr_NCEPREANALYSIS_historical_r1i1p1_1948-2011.nc")
-
-##mean for 1st two layers
-#m <- mean(b[[1:2]])
-
 rb= rotate(tx90.br) 
 # rasterize output, give cells value of NAME(seas are NA)
 #crop
@@ -99,6 +97,7 @@ tx90.init= mean(rb[[1:49]])
 tx90.rec= mean(rb[[50:64]])
 #change in percent
 tx90.dif= (tx90.rec-tx90.init)/tx90.init
+plot(tx90.dif)
 
 #probability of record breaking extremes
 #https://www.nature.com/articles/s41558-021-01092-9
@@ -153,6 +152,11 @@ hpar= readRDS("combinedModel_raster.rds")
 
 #raster
 plot(hpar)
+
+#project to lat lon
+hpar.ll <-projectRaster(from = hpar, to= wsdi.r)
+# mask random grid by worldcropr
+hpar.r = mask(x=hpar.ll, mask=worldcropr)
   
 #------------------
 
@@ -173,12 +177,28 @@ tn10p.v= extract(tn10p.r, inds)
 csdi.v= extract(csdi.r, inds)
 dtr.v= extract(dtr.r, inds)
 
+#extremes
+ext.v= extract(ext.r, inds)
+#full data
+ext.v2= extract(ext, inds)
+
+tx90.v2= extract(tx90.dif, inds)
+
 #diversity
 div.v= extract(div.r, inds)
+bii.v= extract(bii, inds)
+
+#disease
+hpar.v= extract(hpar.r, inds)
 
 #combine
-xy.dat= cbind(xys, wsdi.v, txx.v, tx90.v, gsl.v, tnn.v, tn10p.v, csdi.v, dtr.v, div.v)
+xy.dat= cbind(xys, wsdi.v, txx.v, tx90.v, gsl.v, tnn.v, tn10p.v, csdi.v, dtr.v, div.v,
+              ext.v, ext.v2,tx90.v2,bii.v, hpar.v)
 xy.dat= as.data.frame(xy.dat)
+
+#write out
+setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/out/")
+write.csv(xy.dat,"pts.csv")
 
 dat.l= melt(xy.dat, id.vars= c("x","y","div.v"))
 
