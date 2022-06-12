@@ -3,6 +3,7 @@
 library(reshape2)
 library(raster)
 library(ggplot2)
+library(viridisLite)
 
 library(maptools)
 data(wrld_simpl)
@@ -99,12 +100,13 @@ tx90.rec= mean(rb[[50:64]])
 tx90.dif= (tx90.rec-tx90.init)/tx90.init
 plot(tx90.dif)
 
-#probability of record breaking extremes
+#probability of at least one record breaking extreme per year
 #https://www.nature.com/articles/s41558-021-01092-9
 #https://data.iac.ethz.ch/Fischer_et_al_2021_RecordExtremes/figures/
 
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/data/climate/")
 ext <- raster("fig3b.nc")
+ext= rotate(ext)
 
 #project to lat lon
 ext.ll <-projectRaster(from = ext, to= wsdi.r)
@@ -117,7 +119,6 @@ ext.r = mask(x=ext.ll, mask=worldcropr)
 #mammals, birds, and amphibians
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/data/biodiversity/Richness_2021/")
 div <- raster("Richness_2021.tif")
-plot(div)
 
 #project to lat lon
 div.ll <-projectRaster(from = div, to= wsdi.r)
@@ -131,10 +132,15 @@ div.r = mask(x=div.ll, mask=worldcropr)
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/data/biodiversity/BII/")
 bii <- raster("lbii.asc")
 
+crs(bii) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0" 
+
 #project to lat lon
 bii.ll <-projectRaster(from = bii, to= wsdi.r)
 # mask random grid by worldcropr
 bii.r = mask(x=bii.ll, mask=worldcropr)
+#save projected
+setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/out/")
+saveRDS(bii.r, "bii.rds")
 
 #------------------
 #DISEASE
@@ -149,9 +155,8 @@ bii.r = mask(x=bii.ll, mask=worldcropr)
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/data/disease/HostParasite_raster/")
 hpar= readRDS("combinedModel_raster.rds")
 #also "affinityModel_raster.rds","observed_links_raster.rds","phylogenyModel_raster.rds"
-
-#raster
-plot(hpar)
+#observed
+#hpar.obs= readRDS("observed_links_raster.rds")
 
 #project to lat lon
 hpar.ll <-projectRaster(from = hpar, to= wsdi.r)
@@ -179,26 +184,24 @@ dtr.v= extract(dtr.r, inds)
 
 #extremes
 ext.v= extract(ext.r, inds)
-#full data
-ext.v2= extract(ext, inds)
 
-tx90.v2= extract(tx90.dif, inds)
+tx90dif.v= extract(tx90.dif, inds)
 
 #diversity
 div.v= extract(div.r, inds)
-bii.v= extract(bii, inds)
+bii.v= extract(bii.r, inds)
 
 #disease
 hpar.v= extract(hpar.r, inds)
 
 #combine
-xy.dat= cbind(xys, wsdi.v, txx.v, tx90.v, gsl.v, tnn.v, tn10p.v, csdi.v, dtr.v, div.v,
-              ext.v, ext.v2,tx90.v2,bii.v, hpar.v)
+xy.dat= cbind(xys, wsdi.v, txx.v, tx90.v, gsl.v, tnn.v, tn10p.v, csdi.v, dtr.v, div.v, ext.v, tx90dif.v,hpar.v, bii.v) 
 xy.dat= as.data.frame(xy.dat)
 
 #write out
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/out/")
-write.csv(xy.dat,"pts.csv")
+#write.csv(xy.dat,"pts.csv")
+#xy.dat= read.csv("pts.csv")
 
 dat.l= melt(xy.dat, id.vars= c("x","y","div.v"))
 
@@ -206,10 +209,40 @@ dat.l= melt(xy.dat, id.vars= c("x","y","div.v"))
 ggplot(dat.l, aes(x=value, y=div.v, color=abs(y)))+geom_point()+
   facet_wrap(~variable, scales="free_x")
 
-#maps
-image(txx.r)
-image(div.r)
-image(wsdi.r)
+#3 way
+xy.dat= as.data.frame(cbind(xys, bii.v, ext.v, hpar.v))
+xy.dat$bii.threat= 1-xy.dat$bii.v
+  
+ggplot(xy.dat, aes(x=bii.v, y=hpar.v, color=ext.v))+geom_point()
+
+setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/figs/")
+pdf("CBDscatter.pdf",height = 8, width = 8)
+ggplot(xy.dat, aes(x=ext.v, y=hpar.v, color=bii.threat))+geom_point(alpha=0.5)+
+  theme_classic(base_size = 20)+
+  ylab("hoost-parasite interactions")+xlab("probability of annual heat extreme")+
+  scale_color_viridis_c("Biodiversity risk (1-bii)")
+dev.off()
+
+library(rgl)
+plot3d(x=ext.v, y=bii.v, z=hpar.v)
 
 #overlay maps
+#scale to max and add
+cbd.int= ext.r/cellStats(ext.r, stat='max') +(1-bii.r/cellStats(bii.r, stat='max')) +
+  hpar.r/cellStats(hpar.r, stat='max')
 
+bii.risk= 1-bii.r
+
+#plot together
+setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/figs/")
+pdf("CBDmaps.pdf",height = 10, width = 6)
+par(mfrow=c(4,1), mar=c(2,2,1,0.5) )
+
+#maps
+#plot(tx90.dif)
+plot(ext.r, main="probability of annual record breaking heat extreme", xlim=c(-150,160), ylim=c(-60,80))
+plot(bii.risk, main="biodiversity risk (1-bii)", xlim=c(-150,160), ylim=c(-60,80))
+plot(hpar.r, main="predicted host-parasite interactions", xlim=c(-150,160), ylim=c(-60,80))
+plot(cbd.int, main="CBD overlap (sum with each each scaled to 1)", xlim=c(-150,160), ylim=c(-60,80))
+
+dev.off()
