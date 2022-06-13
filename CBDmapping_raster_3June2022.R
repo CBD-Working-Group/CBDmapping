@@ -125,23 +125,23 @@ div.ll <-projectRaster(from = div, to= wsdi.r)
 # mask random grid by worldcropr
 div.r = mask(x=div.ll, mask=worldcropr)
 
-#diversity R package: https://github.com/RS-eco/rasterSp
-
-#BII
-#https://data.nhm.ac.uk/dataset/global-map-of-the-biodiversity-intactness-index-from-newbold-et-al-2016-science
-setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/data/biodiversity/BII/")
-bii <- raster("lbii.asc")
-
-crs(bii) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0" 
-
-#project to lat lon
-bii.ll <-projectRaster(from = bii, to= wsdi.r)
-# mask random grid by worldcropr
-bii.r = mask(x=bii.ll, mask=worldcropr)
+# #diversity R package: https://github.com/RS-eco/rasterSp
+# 
+# #BII
+# #https://data.nhm.ac.uk/dataset/global-map-of-the-biodiversity-intactness-index-from-newbold-et-al-2016-science
+# setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/data/biodiversity/BII/")
+# bii <- raster("lbii.asc")
+# 
+# crs(bii) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0" 
+# 
+# #project to lat lon
+# bii.ll <-projectRaster(from = bii, to= wsdi.r)
+# # mask random grid by worldcropr
+# bii.r = mask(x=bii.ll, mask=worldcropr)
 #save projected
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/out/")
-saveRDS(bii.r, "bii.rds")
-
+#saveRDS(bii.r, "bii.rds")
+bii.r= readRDS("bii.rds")
 #------------------
 #DISEASE
 
@@ -153,8 +153,8 @@ saveRDS(bii.r, "bii.rds")
 #https://doi.org/10.1111/1365-2656.13666
 
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/data/disease/HostParasite_raster/")
-hpar= readRDS("combinedModel_raster.rds")
-#also "affinityModel_raster.rds","observed_links_raster.rds","phylogenyModel_raster.rds"
+hpar= readRDS("phylogenyModel_raster.rds")
+#also "affinityModel_raster.rds","observed_links_raster.rds","phylogenyModel_raster.rds", "combinedModel_raster.rds"
 #observed
 #hpar.obs= readRDS("observed_links_raster.rds")
 
@@ -219,12 +219,12 @@ setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/figs/")
 pdf("CBDscatter.pdf",height = 8, width = 8)
 ggplot(xy.dat, aes(x=ext.v, y=hpar.v, color=bii.threat))+geom_point(alpha=0.5)+
   theme_classic(base_size = 20)+
-  ylab("hoost-parasite interactions")+xlab("probability of annual heat extreme")+
+  ylab("host-parasite interactions")+xlab("probability of annual heat extreme")+
   scale_color_viridis_c("Biodiversity risk (1-bii)")
 dev.off()
 
 library(rgl)
-plot3d(x=ext.v, y=bii.v, z=hpar.v)
+plot3d(x=ext.v, y=1-xy.dat$bii.v, z=hpar.v)
 
 #overlay maps
 #scale to max and add
