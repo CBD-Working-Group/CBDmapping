@@ -8,6 +8,16 @@ library(viridisLite)
 library(maptools)
 data(wrld_simpl)
 
+#CLIMATE CHANGE
+#http://climexp.knmi.nl/plot_atlas_form.py
+#mean rcp45 temperature 2081-2100 minus 1986-2005 Jan-Dec AR5 CMIP5 subset
+setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/data/climate/")
+clim.change <- raster("diff_tas_Amon_onemean_rcp45_000_2081-2100_minus_1986-2005_mon1_ave12_withsd.nc")
+
+#global mean temperatures
+#download from https://data.ceda.ac.uk/badc/cru/data/cru_ts/cru_ts_4.02/data/tmp
+filename = "/badc/cru/data/cru_ts/cru_ts_4.02/data/tmp/cru_ts4.02.1901.2017.tmp.dat.nc"
+
 #CLIMATE EXTREME DATA
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/Extremes/ExtremesSynched/Data/ClimateData/r1i1p1-2014-11-26/r1i1p1/")
 
