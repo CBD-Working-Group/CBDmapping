@@ -16,7 +16,7 @@ clim.change <- raster("diff_tas_Amon_onemean_rcp45_000_2081-2100_minus_1986-2005
 
 #global mean temperatures
 #download from https://data.ceda.ac.uk/badc/cru/data/cru_ts/cru_ts_4.02/data/tmp
-filename = "/badc/cru/data/cru_ts/cru_ts_4.02/data/tmp/cru_ts4.02.1901.2017.tmp.dat.nc"
+tmp <- raster("cru_ts4.02.1901.2017.tmp.dat.nc")
 
 #CLIMATE EXTREME DATA
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/Extremes/ExtremesSynched/Data/ClimateData/r1i1p1-2014-11-26/r1i1p1/")
@@ -54,7 +54,20 @@ dtr.br <- brick("dtrETCCDI_yr_NCEPREANALYSIS_historical_r1i1p1_1948-2011.nc")
 
 #set up crop to extent
 extent.r= extent(-180, 180, -60, 75)   #extent(wsdi.r)
+rgeos::set_RGEOS_CheckValidity(2L)
 worldcrop<-crop(wrld_simpl, extent.r)
+
+#crop
+rb= wsdi.br
+rb= rotate(rb) 
+worldcropr = rasterize(worldcrop, rb, field='NAME', fun='first')
+
+#crop to extent
+# mask random grid by worldcropr
+clim.change= rotate(clim.change)
+clim.change.r=clim.change  #mask(x=clim.change, mask=worldcropr)
+
+tmp.r=tmp  #mask(x=tmp, mask=worldcropr)
 
 #crop to extent and average brick
 for(r.k in 1:8){
@@ -70,8 +83,7 @@ for(r.k in 1:8){
           
   rb= rotate(rb) 
   # rasterize output, give cells value of NAME(seas are NA)
-  #crop
-  worldcropr = rasterize(worldcrop, rb, field='NAME', fun='first')
+  
   # mask random grid by worldcropr
   wsdi.br = mask(x=rb, mask=worldcropr)
   #mean
@@ -183,6 +195,9 @@ inds= which(!is.na(div.v))
 xys= xyFromCell(div.ll, inds)
 
 #extract values
+clim.change.v= extract(clim.change.r, inds)
+tmp.v= extract(tmp.r, inds)
+
 wsdi.v= extract(wsdi.r, inds)
 txx.v= extract(txx.r, inds)
 tx90.v= extract(tx90.r, inds)
@@ -205,7 +220,7 @@ bii.v= extract(bii.r, inds)
 hpar.v= extract(hpar.r, inds)
 
 #combine
-xy.dat= cbind(xys, wsdi.v, txx.v, tx90.v, gsl.v, tnn.v, tn10p.v, csdi.v, dtr.v, div.v, ext.v, tx90dif.v,hpar.v, bii.v) 
+xy.dat= cbind(xys, clim.change.v, tmp.v, wsdi.v, txx.v, tx90.v, gsl.v, tnn.v, tn10p.v, csdi.v, dtr.v, div.v, ext.v, tx90dif.v,hpar.v, bii.v) 
 xy.dat= as.data.frame(xy.dat)
 
 #write out
@@ -213,6 +228,29 @@ setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/out/")
 #write.csv(xy.dat,"pts.csv")
 #xy.dat= read.csv("pts.csv")
 
+#-----------------
+#CORRELATIONS
+library(corrplot)
+#library(Cairo)
+#library(psych)
+library(GGally) #can add groups https://r-charts.com/correlation/ggpairs/
+
+clim.cor <- cor(xy.dat[,c(3:12,15)])
+corrplot(clim.cor, method = "ellipse", type = "lower")
+
+#try out climate pcs
+xy.omit= na.omit(xy.dat[,c(5:7,9:12)])
+pc=princomp(xy.omit, cor=FALSE, fix_sign=FALSE)
+pc$loadings
+
+#xy.plot= cbind(xy.dat[,c("x","y", "div.v", "bii.v","hpar.v") ] ,pc=pc$scores[,1])
+#first pc is just txx.v and tnn.v that are highly correlated 
+xy.plot= xy.dat[,c("txx.v", "tnn.v", "div.v", "bii.v","hpar.v") ]
+
+ggpairs(xy.plot) 
+
+#----------------- 
+#plot relationships
 dat.l= melt(xy.dat, id.vars= c("x","y","div.v"))
 
 #plot relationships
@@ -238,7 +276,11 @@ plot3d(x=ext.v, y=1-xy.dat$bii.v, z=hpar.v)
 
 #overlay maps
 #scale to max and add
-cbd.int= ext.r/cellStats(ext.r, stat='max') +(1-bii.r/cellStats(bii.r, stat='max')) +
+#cbd.int= ext.r/cellStats(ext.r, stat='max') +(1-bii.r/cellStats(bii.r, stat='max')) +
+#  hpar.r/cellStats(hpar.r, stat='max')
+
+#use max
+cbd.int= txx.r/cellStats(txx.r, stat='max') +(1-bii.r/cellStats(bii.r, stat='max')) +
   hpar.r/cellStats(hpar.r, stat='max')
 
 bii.risk= 1-bii.r
