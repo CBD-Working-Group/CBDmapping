@@ -16,7 +16,7 @@ clim.change <- raster("diff_tas_Amon_onemean_rcp45_000_2081-2100_minus_1986-2005
 
 #global mean temperatures
 #download from https://data.ceda.ac.uk/badc/cru/data/cru_ts/cru_ts_4.02/data/tmp
-tmp <- raster("cru_ts4.02.1901.2017.tmp.dat.nc")
+#tmp <- raster("cru_ts4.02.1901.2017.tmp.dat.nc")
 
 #CLIMATE EXTREME DATA
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/Extremes/ExtremesSynched/Data/ClimateData/r1i1p1-2014-11-26/r1i1p1/")
@@ -220,7 +220,7 @@ bii.v= extract(bii.r, inds)
 hpar.v= extract(hpar.r, inds)
 
 #combine
-xy.dat= cbind(xys, clim.change.v, tmp.v, wsdi.v, txx.v, tx90.v, gsl.v, tnn.v, tn10p.v, csdi.v, dtr.v, div.v, ext.v, tx90dif.v,hpar.v, bii.v) 
+xy.dat= cbind(xys, clim.change.v, wsdi.v, txx.v, tx90.v, gsl.v, tnn.v, tn10p.v, csdi.v, dtr.v, div.v, ext.v, tx90dif.v,hpar.v, bii.v) #tmp.v, 
 xy.dat= as.data.frame(xy.dat)
 
 #write out
@@ -245,9 +245,12 @@ pc$loadings
 
 #xy.plot= cbind(xy.dat[,c("x","y", "div.v", "bii.v","hpar.v") ] ,pc=pc$scores[,1])
 #first pc is just txx.v and tnn.v that are highly correlated 
-xy.plot= xy.dat[,c("txx.v", "tnn.v", "div.v", "bii.v","hpar.v") ]
+xy.plot= xy.dat[,c("txx.v", "tnn.v", "clim.change.v","div.v", "bii.v","hpar.v") ]
 
+setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/figs/")
+pdf("CBDcorrelations.pdf",height = 8, width = 8)
 ggpairs(xy.plot) 
+dev.off()
 
 #----------------- 
 #plot relationships
@@ -258,7 +261,7 @@ ggplot(dat.l, aes(x=value, y=div.v, color=abs(y)))+geom_point()+
   facet_wrap(~variable, scales="free_x")
 
 #3 way
-xy.dat= as.data.frame(cbind(xys, bii.v, ext.v, hpar.v))
+xy.dat= as.data.frame(cbind(xys, txx.v, bii.v, hpar.v)) #ext.v
 xy.dat$bii.threat= 1-xy.dat$bii.v
   
 ggplot(xy.dat, aes(x=bii.v, y=hpar.v, color=ext.v))+geom_point()
@@ -267,12 +270,12 @@ setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/figs/")
 pdf("CBDscatter.pdf",height = 8, width = 8)
 ggplot(xy.dat, aes(x=ext.v, y=hpar.v, color=bii.threat))+geom_point(alpha=0.5)+
   theme_classic(base_size = 20)+
-  ylab("host-parasite interactions")+xlab("probability of annual heat extreme")+
+  ylab("host-parasite interactions")+xlab("max temp (C)")  #xlab("probability of annual heat extreme")+
   scale_color_viridis_c("Biodiversity risk (1-bii)")
 dev.off()
 
 library(rgl)
-plot3d(x=ext.v, y=1-xy.dat$bii.v, z=hpar.v)
+plot3d(x=txx.v, y=1-xy.dat$bii.v, z=hpar.v)
 
 #overlay maps
 #scale to max and add
@@ -292,7 +295,8 @@ par(mfrow=c(4,1), mar=c(2,2,1,0.5) )
 
 #maps
 #plot(tx90.dif)
-plot(ext.r, main="probability of annual record breaking heat extreme", xlim=c(-150,160), ylim=c(-60,80))
+#plot(ext.r, main="probability of annual record breaking heat extreme", xlim=c(-150,160), ylim=c(-60,80))
+plot(txx.r, main="maximum temparature (C)", xlim=c(-150,160), ylim=c(-60,80))
 plot(bii.risk, main="biodiversity risk (1-bii)", xlim=c(-150,160), ylim=c(-60,80))
 plot(hpar.r, main="predicted host-parasite interactions", xlim=c(-150,160), ylim=c(-60,80))
 plot(cbd.int, main="CBD overlap (sum with each each scaled to 1)", xlim=c(-150,160), ylim=c(-60,80))
