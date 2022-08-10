@@ -338,10 +338,14 @@ write.csv(xy.dat,"threatmapdata.csv")
 
 #3D
 #https://www.rayshader.com/
-#devtools::install_github("tylermorganwall/rayvertex")
-#devtools::install_github("tylermorganwall/rayshader") 
 
-#plot_gg() 
+#install.packages("rayshader")
+library(rayshader)
+
+tmap= ggplot(xy.dat, aes(x= x, y=y, fill=bii.threat))+geom_tile()+
+  scale_fill_viridis_c()
+
+plot_gg(tmap)
 
 #----------------------
 #Cohen et al. data set
