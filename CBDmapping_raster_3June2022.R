@@ -8,6 +8,8 @@ library(viridisLite)
 library(maptools)
 data(wrld_simpl)
 
+hdir=getwd()
+
 #CLIMATE CHANGE
 #http://climexp.knmi.nl/plot_atlas_form.py
 #mean rcp45 temperature 2081-2100 minus 1986-2005 Jan-Dec AR5 CMIP5 subset
@@ -279,12 +281,12 @@ plot3d(x=txx.v, y=1-xy.dat$bii.v, z=hpar.v)
 
 #overlay maps
 #scale to max and add
-#cbd.int= ext.r/cellStats(ext.r, stat='max') +(1-bii.r/cellStats(bii.r, stat='max')) +
-#  hpar.r/cellStats(hpar.r, stat='max')
+cbd.int= ext.r/cellStats(ext.r, stat='max') +(1-bii.r/cellStats(bii.r, stat='max')) +
+  hpar.r/cellStats(hpar.r, stat='max')
 
 #use max
-cbd.int= txx.r/cellStats(txx.r, stat='max') +(1-bii.r/cellStats(bii.r, stat='max')) +
-  hpar.r/cellStats(hpar.r, stat='max')
+#cbd.int= txx.r/cellStats(txx.r, stat='max') +(1-bii.r/cellStats(bii.r, stat='max')) +
+#  hpar.r/cellStats(hpar.r, stat='max')
 
 bii.risk= 1-bii.r
 
@@ -296,9 +298,57 @@ par(mfrow=c(4,1), mar=c(2,2,1,0.5) )
 #maps
 #plot(tx90.dif)
 #plot(ext.r, main="probability of annual record breaking heat extreme", xlim=c(-150,160), ylim=c(-60,80))
-plot(txx.r, main="maximum temparature (C)", xlim=c(-150,160), ylim=c(-60,80))
+plot(txx.r, main="maximum temperature (C)", xlim=c(-150,160), ylim=c(-60,80))
 plot(bii.risk, main="biodiversity risk (1-bii)", xlim=c(-150,160), ylim=c(-60,80))
 plot(hpar.r, main="predicted host-parasite interactions", xlim=c(-150,160), ylim=c(-60,80))
 plot(cbd.int, main="CBD overlap (sum with each each scaled to 1)", xlim=c(-150,160), ylim=c(-60,80))
 
 dev.off()
+
+#=========================
+
+threat.stack= stack(txx.r, 1-bii.r, hpar.r) 
+plotRGB(threat.stack)
+
+#3way color map
+#http://matthewkling.github.io/media/colormap/
+
+#devtools::install_github("matthewkling/colormap")
+library(colormap)
+library(fields)
+
+#3 way
+xy.dat= as.data.frame(cbind(xys, ext.v, bii.v, hpar.v)) #ext.v
+xy.dat$bii.threat= 1-xy.dat$bii.v
+xy.dat= na.omit(xy.dat)
+
+xy.dat$cbd.int= xy.dat$ext.v/max(xy.dat$ext.v)+xy.dat$bii.threat/max(xy.dat$bii.threat)+xy.dat$hpar.v/max(xy.dat$hpar.v)
+
+# map color to the climate variables
+xy.dat$colors <- colors3d(xy.dat[,c(3,5,6)])
+
+plot(xy.dat$x, xy.dat$y, col=xy.dat$colors)
+
+quilt.plot(xy.dat$x, xy.dat$y, xy.dat$cbd.int, 
+           add.legend=TRUE, col=viridis(n=20))
+
+#write out
+setwd(hdir)
+write.csv(xy.dat,"threatmapdata.csv")
+
+#3D
+#https://www.rayshader.com/
+#devtools::install_github("tylermorganwall/rayvertex")
+#devtools::install_github("tylermorganwall/rayshader") 
+
+#plot_gg() 
+
+#----------------------
+#Cohen et al. data set
+
+setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/data/")
+para= read.csv("CohenDatafinal052120.csv")
+
+ggplot(para, aes(x= Monthly.tmp-Longterm.tmp, y=Prevalence)) +geom_point()+facet_grid(Thermal.biology~Disease.type)
+ggplot(para, aes(x= Monthly.pre-Longterm.pre, y=Prevalence)) +geom_point()+facet_grid(Thermal.biology~Disease.type)
+
