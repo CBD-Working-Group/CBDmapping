@@ -137,6 +137,20 @@ ext.ll <-projectRaster(from = ext, to= wsdi.r)
 # mask random grid by worldcropr
 ext.r = mask(x=ext.ll, mask=worldcropr)
 
+#Climate Hotspots
+#https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2021EF002027
+setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/data/climate/MiaoHotspot/")
+chot <- raster("SED_ssp245_2080-2099.nc")
+chot= flip(t(chot), 1)
+chot=(flip(chot, 2))
+
+crs(chot) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0" 
+res(chot)=1
+#project to lat lon
+chot.ll <-projectRaster(from = chot, to= wsdi.r)
+# mask random grid by worldcropr
+chot.r = mask(x=chot.ll, mask=worldcropr)
+
 #---------------
 #BIODIVERSITY
 #IUCN: https://www.iucnredlist.org/resources/other-spatial-downloads
@@ -188,7 +202,6 @@ hpar.ll <-projectRaster(from = hpar, to= wsdi.r)
 hpar.r = mask(x=hpar.ll, mask=worldcropr)
   
 #------------------
-
 #compare patterns
 
 #extract all to locate data
@@ -199,6 +212,7 @@ xys= xyFromCell(div.ll, inds)
 #extract values
 clim.change.v= extract(clim.change.r, inds)
 tmp.v= extract(tmp.r, inds)
+chot.v= extract(chot, inds)
 
 wsdi.v= extract(wsdi.r, inds)
 txx.v= extract(txx.r, inds)
@@ -222,7 +236,7 @@ bii.v= extract(bii.r, inds)
 hpar.v= extract(hpar.r, inds)
 
 #combine
-xy.dat= cbind(xys, clim.change.v, wsdi.v, txx.v, tx90.v, gsl.v, tnn.v, tn10p.v, csdi.v, dtr.v, div.v, ext.v, tx90dif.v,hpar.v, bii.v) #tmp.v, 
+xy.dat= cbind(xys, clim.change.v, chot.v, wsdi.v, txx.v, tx90.v, gsl.v, tnn.v, tn10p.v, csdi.v, dtr.v, div.v, ext.v, tx90dif.v,hpar.v, bii.v) #tmp.v, 
 xy.dat= as.data.frame(xy.dat)
 
 #write out
@@ -281,7 +295,7 @@ plot3d(x=txx.v, y=1-xy.dat$bii.v, z=hpar.v)
 
 #overlay maps
 #scale to max and add
-cbd.int= ext.r/cellStats(ext.r, stat='max') +(1-bii.r/cellStats(bii.r, stat='max')) +
+cbd.int= chot/cellStats(chot, stat='max') +(1-bii.r/cellStats(bii.r, stat='max')) +
   hpar.r/cellStats(hpar.r, stat='max')
 
 #use max
@@ -289,21 +303,6 @@ cbd.int= ext.r/cellStats(ext.r, stat='max') +(1-bii.r/cellStats(bii.r, stat='max
 #  hpar.r/cellStats(hpar.r, stat='max')
 
 bii.risk= 1-bii.r
-
-#plot together
-setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/figs/")
-pdf("CBDmaps.pdf",height = 10, width = 6)
-par(mfrow=c(4,1), mar=c(2,2,1,0.5) )
-
-#maps
-#plot(tx90.dif)
-#plot(ext.r, main="probability of annual record breaking heat extreme", xlim=c(-150,160), ylim=c(-60,80))
-plot(txx.r, main="maximum temperature (C)", xlim=c(-150,160), ylim=c(-60,80))
-plot(bii.risk, main="biodiversity risk (1-bii)", xlim=c(-150,160), ylim=c(-60,80))
-plot(hpar.r, main="predicted host-parasite interactions", xlim=c(-150,160), ylim=c(-60,80))
-plot(cbd.int, main="CBD overlap (sum with each each scaled to 1)", xlim=c(-150,160), ylim=c(-60,80))
-
-dev.off()
 
 #=========================
 
@@ -329,6 +328,9 @@ xy.dat$colors <- colors3d(xy.dat[,c(3,5,6)])
 
 plot(xy.dat$x, xy.dat$y, col=xy.dat$colors)
 
+risk.cm=ggplot(xy.dat, aes(x= x, y=y, fill=colors))+geom_tile()+
+  scale_fill_identity()
+
 quilt.plot(xy.dat$x, xy.dat$y, xy.dat$cbd.int, 
            add.legend=TRUE, col=viridis(n=20))
 
@@ -346,6 +348,24 @@ tmap= ggplot(xy.dat, aes(x= x, y=y, fill=bii.threat))+geom_tile()+
   scale_fill_viridis_c()
 
 plot_gg(tmap)
+
+#-----
+#plot together
+setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/figs/")
+pdf("CBDmaps.pdf",height = 10, width = 6)
+par(mfrow=c(4,1), mar=c(2,2,1,0.5) )
+
+#maps
+#plot(tx90.dif)
+#plot(ext.r, main="probability of annual record breaking heat extreme", xlim=c(-150,160), ylim=c(-60,80))
+plot(chot, main="climate standard euclidean distance", xlim=c(-150,160), ylim=c(-60,80))
+plot(bii.risk, main="biodiversity risk (1-bii)", xlim=c(-150,160), ylim=c(-60,80))
+plot(hpar.r, main="predicted host-parasite interactions", xlim=c(-150,160), ylim=c(-60,80))
+#plot(cbd.int, main="CBD overlap (sum with each each scaled to 1)", xlim=c(-150,160), ylim=c(-60,80))
+dev.off()
+
+plot(risk.cm)
+
 
 #----------------------
 #Cohen et al. data set
