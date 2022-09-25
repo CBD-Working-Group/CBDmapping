@@ -4,6 +4,7 @@ library(reshape2)
 library(raster)
 library(ggplot2)
 library(viridisLite)
+library(patchwork)
 
 library(maptools)
 data(wrld_simpl)
@@ -179,7 +180,7 @@ xy.dat$colors <- colors3d(xy.dat[,c(3,4,5)])
 plot(xy.dat$x, xy.dat$y, col=xy.dat$colors)
 
 risk.cm=ggplot(xy.dat, aes(x= x, y=y, fill=colors))+geom_tile()+
-  scale_fill_identity()
+  scale_fill_identity()+theme_bw()
 
 quilt.plot(xy.dat$x, xy.dat$y, xy.dat$cbd.int, 
            add.legend=TRUE, col=viridis(n=20))
@@ -201,15 +202,56 @@ plot_gg(tmap)
 
 #-----
 #plot together
+
+# #maps
+# plot(chot, main="climate standard euclidean distance", xlim=c(-150,160), ylim=c(-60,80))
+# plot(bii.risk, main="biodiversity risk (1-bii)", xlim=c(-150,160), ylim=c(-60,80))
+# plot(hpar.r, main="predicted host-parasite interactions", xlim=c(-150,160), ylim=c(-60,80))
+# print(risk.cm)
+# #plot(cbd.int, main="CBD overlap (sum with each each scaled to 1)", xlim=c(-150,160), ylim=c(-60,80))
+
+
+#climate
+chot.df <- as.data.frame(chot, xy=TRUE) #Convert raster to data.frame
+names(chot.df)[3] <- 'climate' 
+head(chot.df)
+
+clim.plot= ggplot(data = chot.df)+
+  geom_raster(mapping=aes(x=x, y=y, fill=climate))+
+  scale_fill_gradientn(colours= rev(terrain.colors(10)), name='climate')+
+  theme_bw()
+
+#biodiversity
+bii.df <- as.data.frame(bii.risk, xy=TRUE) #Convert raster to data.frame
+names(bii.df)[3] <- 'biodiversity' 
+head(chot.df)
+
+bii.plot= ggplot(data = bii.df)+
+  geom_raster(mapping=aes(x=x, y=y, fill=biodiversity))+
+  scale_fill_gradientn(colours= rev(terrain.colors(10)), name='biodiversity risk')+
+  theme_bw()
+
+#disease
+hpar.df <- as.data.frame(hpar.r, xy=TRUE) #Convert raster to data.frame
+names(hpar.df)[3] <- 'disease' 
+head(hpar.df)
+
+disease.plot= ggplot(data = hpar.df)+
+  geom_raster(mapping=aes(x=x, y=y, fill=disease))+
+  scale_fill_gradientn(colours= rev(terrain.colors(10)), name='disease')+ #'predicted host-parasite interactions'
+  theme_bw()
+
+#plot legend
+library(rgl)
+with(xy.dat, plot3d(chot.v, bii.v, hpar.v, col = colors))
+
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/figs/")
 pdf("CBDmaps.pdf",height = 10, width = 6)
-par(mfrow=c(4,1), mar=c(2,2,1,0.5) )
 
-#maps
-plot(chot, main="climate standard euclidean distance", xlim=c(-150,160), ylim=c(-60,80))
-plot(bii.risk, main="biodiversity risk (1-bii)", xlim=c(-150,160), ylim=c(-60,80))
-plot(hpar.r, main="predicted host-parasite interactions", xlim=c(-150,160), ylim=c(-60,80))
-#plot(cbd.int, main="CBD overlap (sum with each each scaled to 1)", xlim=c(-150,160), ylim=c(-60,80))
+clim.plot /
+  bii.plot /
+  disease.plot /
+  risk.cm
 dev.off()
 
 
