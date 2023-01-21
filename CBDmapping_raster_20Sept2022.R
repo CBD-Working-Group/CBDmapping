@@ -5,6 +5,9 @@ library(raster)
 library(ggplot2)
 library(viridisLite)
 library(patchwork)
+library(colormap)
+library(fields)
+library(rgl)
 
 library(maptools)
 data(wrld_simpl)
@@ -18,9 +21,8 @@ worldcrop<-crop(wrld_simpl, extent.r)
 
 #------------------
 #DISEASE
-
 #zoonotic disease from Hahn et al.
-hr <- raster("Total host richness")
+hr <- raster("Total host richness.grd")
 hr.ll<-crop(hr, extent.r) 
 
 #------------------
@@ -78,98 +80,24 @@ setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/out/")
 #write.csv(xy.dat,"pts.csv")
 #xy.dat= read.csv("pts.csv")
 
-#-----------------
-#CORRELATIONS
-library(corrplot)
-#library(Cairo)
-#library(psych)
-library(GGally) #can add groups https://r-charts.com/correlation/ggpairs/
-
-clim.cor <- cor(xy.dat[,c(3:5)])
-corrplot(clim.cor, method = "ellipse", type = "lower")
-
-xy.plot= xy.dat[,c("chot.v", "bii.v","hr.v") ]
-
-setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/figs/")
-pdf("CBDcorrelations.pdf",height = 8, width = 8)
-ggpairs(xy.plot) 
-dev.off()
-
-#----------------- 
-#plot relationships
-dat.l= melt(xy.dat, id.vars= c("x","y"))
-
-#plot relationships
-ggplot(dat.l, aes(x=value, y=div.v, color=abs(y)))+geom_point()+
-  facet_wrap(~variable, scales="free_x")
-
-#3 way
-xy.dat= as.data.frame(cbind(xys, chot.v, bii.v, hr.v)) #ext.v
 xy.dat$bii.threat= 1-xy.dat$bii.v
-  
-ggplot(xy.dat, aes(x=bii.v, y=hr.v, color=chot.v))+geom_point()
-
-setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/figs/")
-pdf("CBDscatter.pdf",height = 8, width = 8)
-ggplot(xy.dat, aes(x=chot.v, y=hr.v, color=bii.v))+geom_point(alpha=0.5)+
-  theme_classic(base_size = 20)+
-  ylab("host-parasite interactions")+xlab("climate hotspot")+
-  scale_color_viridis_c("Biodiversity risk (1-bii)")
-dev.off()
-
-#overlay maps
-#scale to max and add
-cbd.int= chot/cellStats(chot, stat='max') +(1-bii.r/cellStats(bii.r, stat='max')) +
-  hpar.r/cellStats(hpar.r, stat='max')
-
-bii.risk= 1-bii.r
 
 #=========================
-
-threat.stack= stack(txx.r, 1-bii.r, hr.r) 
-plotRGB(threat.stack)
-
 #3way color map
 #http://matthewkling.github.io/media/colormap/
-
 #devtools::install_github("matthewkling/colormap")
-library(colormap)
-library(fields)
 
-#3 way
 xy.dat= as.data.frame(cbind(xys, chot.v, bii.v, hr.v)) 
 xy.dat$bii.threat= 1-xy.dat$bii.v
 xy.dat= na.omit(xy.dat)
 
-xy.dat$cbd.int= xy.dat$chot.v/max(xy.dat$chot.v)+xy.dat$bii.threat/max(xy.dat$bii.threat)+xy.dat$hr.v/max(xy.dat$hr.v)
-
-quilt.plot(xy.dat$x, xy.dat$y, xy.dat$cbd.int, 
-           add.legend=TRUE, col=viridis(n=20))
-
 #write out
 setwd(hdir)
-write.csv(xy.dat,"threatmapdata.csv")
-
-#3D
-#https://www.rayshader.com/
-
-#install.packages("rayshader")
-library(rayshader)
-
-tmap= ggplot(xy.dat, aes(x= x, y=y, fill=bii.threat))+geom_tile()+
-  scale_fill_viridis_c()
-
-plot_gg(tmap)
+#write.csv(xy.dat,"threatmapdata.csv")
+#xy.dat= read.csv("threatmapdata.csv")
 
 #-----
 #plot together
-
-# #maps
-# plot(chot, main="climate standard euclidean distance", xlim=c(-150,160), ylim=c(-60,80))
-# plot(bii.risk, main="biodiversity risk (1-bii)", xlim=c(-150,160), ylim=c(-60,80))
-# plot(hpar.r, main="predicted host-parasite interactions", xlim=c(-150,160), ylim=c(-60,80))
-# print(risk.cm)
-# #plot(cbd.int, main="CBD overlap (sum with each each scaled to 1)", xlim=c(-150,160), ylim=c(-60,80))
 
 #climate
 chot.df <- as.data.frame(chot, xy=TRUE) #Convert raster to data.frame
@@ -179,17 +107,25 @@ head(chot.df)
 clim.plot= ggplot(data = chot.df)+
   geom_raster(mapping=aes(x=x, y=y, fill=climate))+
   scale_fill_gradientn(colours= rev(terrain.colors(10)), name='climate change', na.value="white")+
-  theme_void()
+  theme_void()+
+  theme(plot.margin=grid::unit(c(0,0,0,0), "cm"), legend.position = "bottom")+ 
+  scale_x_continuous(limits=c(-170,180), expand=c(0,0)) +
+  scale_y_continuous(limits=c(-55,75), expand=c(0,0)) +
+  labs(x = NULL, y = NULL)
 
 #biodiversity
+bii.risk= 1-bii.r
 bii.df <- as.data.frame(bii.risk, xy=TRUE) #Convert raster to data.frame
 names(bii.df)[3] <- 'biodiversity' 
-head(chot.df)
 
 bii.plot= ggplot(data = bii.df)+
   geom_raster(mapping=aes(x=x, y=y, fill=biodiversity))+
   scale_fill_gradientn(colours= rev(terrain.colors(10)), name='biodiversity risk', na.value="white")+
-  theme_void()
+  theme_void()+
+  theme(plot.margin=grid::unit(c(0,0,0,0), "cm"), legend.position = "bottom")+ 
+  scale_x_continuous(limits=c(-170,180), expand=c(0,0)) +
+  scale_y_continuous(limits=c(-55,75), expand=c(0,0)) +
+  labs(x = NULL, y = NULL)
 
 #disease
 hpar.df <- as.data.frame(hr.ll, xy=TRUE) #Convert raster to data.frame
@@ -199,30 +135,50 @@ head(hpar.df)
 disease.plot= ggplot(data = hpar.df)+
   geom_raster(mapping=aes(x=x, y=y, fill=disease))+
   scale_fill_gradientn(colours= rev(terrain.colors(10)), name='host richness', na.value="white")+ #'predicted host-parasite interactions'
-  theme_void()
+  theme_void()+
+  theme(plot.margin=grid::unit(c(0,0,0,0), "cm"), legend.position = "bottom")+ 
+  scale_x_continuous(limits=c(-170,180), expand=c(0,0)) +
+  scale_y_continuous(limits=c(-55,75), expand=c(0,0)) +
+  labs(x = NULL, y = NULL)
 
-#-----------
 #Risk map
 # map color to the climate variables
 xy.dat$colors <- colors3d(xy.dat[,c(3,4,5)])
 #names(xy.dat)[3:5]=c("climate change","biodiversity risk","host richness")
 
-#plot(xy.dat$x, xy.dat$y, col=xy.dat$colors)
+risk.cm=ggplot(xy.dat, aes(x= x, y=y, fill=colors, color=colors))+geom_tile()+
+  scale_fill_identity()+scale_color_identity()+theme_void()+
+  theme(plot.margin=grid::unit(c(0,0,0,0), "cm"), legend.position = "bottom")+ 
+  scale_x_continuous(limits=c(-170,180), expand=c(0,0)) +
+  scale_y_continuous(limits=c(-55,75), expand=c(0,0)) +
+  labs(x = NULL, y = NULL)
 
-risk.cm=ggplot(xy.dat, aes(x= x, y=y, fill=colors))+geom_tile()+
-  scale_fill_identity()+theme_void()
-
-#plot legend
-library(rgl)
+#-----
+#plot 3D legend
 with(xy.dat, plot3d(chot.v, bii.v, hr.v, col = colors, xlab = 'climate change', ylab = 'biodiversity risk', zlab = 'host richness'))
 
+rgl.snapshot('3dplot.png', fmt = 'png')
+#rgl.postscript('3dplot.pdf', fmt = 'pdf')
+
+library(magick)
+library(ggpubr)
+leg3d <- image_read('3dplot.png')
+leg3d <- ggplot() +
+  background_image(leg3d) + coord_fixed()
+
+#-----
+layout <- "
+AADDD
+BBDDD
+CCDDD
+"
+
+maps= clim.plot + bii.plot + disease.plot + risk.cm +
+  plot_layout(design = layout)
+
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/figs/")
-pdf("CBDmaps.pdf",height = 10, width = 6)
+pdf("CBDmaps.pdf",height = 6, width = 12)
 
-clim.plot /
-  bii.plot /
-  disease.plot /
-  risk.cm
+maps + inset_element(leg3d, left = 0.6, bottom = 0, right = 1, top = 0.7, align_to = 'full')
+
 dev.off()
-
-
