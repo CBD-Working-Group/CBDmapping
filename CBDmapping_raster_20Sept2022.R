@@ -55,6 +55,11 @@ setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/out/")
 #saveRDS(bii.r, "bii.rds")
 bii.r= readRDS("bii.rds")
 
+#https://figshare.com/articles/dataset/Global_maps_of_Biodiversity_Intactness_Index_Sanchez-Ortiz_et_al_2019_-_bioRxiv_/7951415/1
+setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/data/biodiversity/BII2019/abundance_richness_BII_maps/")
+bii2<- raster("final-rich-bii-isl-main.tif")
+bii.r = crop(bii2, extent.r)
+
 #------------------
 #compare patterns
 
