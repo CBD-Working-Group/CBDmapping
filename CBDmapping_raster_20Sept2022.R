@@ -37,7 +37,7 @@ chot=(flip(chot, 2))
 crs(chot) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0" 
 res(chot)=1
 chot.ll<-crop(chot, extent.r)
-
+rm(chot,hr)
 #---------------
 #BIODIVERSITY
 
@@ -52,16 +52,18 @@ chot.ll<-crop(chot, extent.r)
 # bii.ll <-projectRaster(from = bii, to= hr.ll)
 # # mask random grid by worldcropr
 # bii.r = mask(x=bii.ll, mask=worldcropr)
-#save projected
+##save projected
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/out/")
 #saveRDS(bii.r, "bii.rds")
-bii.r= readRDS("bii.rds")
+##bii.r= readRDS("bii.rds")
 
 #https://figshare.com/articles/dataset/Global_maps_of_Biodiversity_Intactness_Index_Sanchez-Ortiz_et_al_2019_-_bioRxiv_/7951415/1
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/data/biodiversity/BII2019/abundance_richness_BII_maps/")
 bii2<- raster("final-rich-bii-isl-main.tif")
-bii.r = crop(bii2, extent.r)
 
+bii.r = crop(bii2, extent.r)
+bii.r<- aggregate(bii.r, fact=4)
+rm(bii2)
 #------------------
 #compare patterns
 
@@ -105,7 +107,7 @@ setwd(hdir)
 #plot together
 
 #climate
-chot.df <- as.data.frame(chot, xy=TRUE) #Convert raster to data.frame
+chot.df <- as.data.frame(chot.ll, xy=TRUE) #Convert raster to data.frame
 names(chot.df)[3] <- 'climate' 
 head(chot.df)
 
@@ -122,6 +124,9 @@ clim.plot= ggplot(data = chot.df)+
 bii.risk= 1-bii.r
 bii.df <- as.data.frame(bii.risk, xy=TRUE) #Convert raster to data.frame
 names(bii.df)[3] <- 'biodiversity' 
+
+#setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/out/")
+#write.csv(bii.df,"biidf.csv")
 
 bii.plot= ggplot(data = bii.df)+
   geom_raster(mapping=aes(x=x, y=y, fill=biodiversity))+
@@ -184,6 +189,7 @@ maps= clim.plot + bii.plot + disease.plot + risk.cm +
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/CBDwg/figs/")
 pdf("CBDmaps.pdf",height = 6, width = 12)
 
-maps + inset_element(leg3d, left = 0.6, bottom = 0, right = 1, top = 0.7, align_to = 'full')
+maps
+#maps + inset_element(leg3d, left = 0.6, bottom = 0, right = 1, top = 0.7, align_to = 'full')
 
 dev.off()
